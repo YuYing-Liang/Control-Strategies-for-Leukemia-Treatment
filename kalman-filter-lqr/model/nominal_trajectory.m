@@ -442,7 +442,7 @@ clear i j x_lin_j x0_i u_i tspan;
 
 %% 2.7.1 Trajectory with Noise; Setup
 
-num_cycles = 7; %34
+num_cycles = 14; %34
 
 step_size_noisy = step_size_ref;
 num_t_noisy = (1/step_size_noisy)*21+1; % number of timepoints to evaluate ODE45
@@ -502,6 +502,9 @@ for i=1:num_cycles
 end
 clear i;
 
+toc
+
+%%
 figure()
 hold on
 xlabel('Days Elapsed')
@@ -521,8 +524,6 @@ plot(t_noisy_r_flattened,u_noisy_r_flattened)
 xlabel("Time elapsed (days)")
 ylabel("Input dosage (mg)")
 hold off
-
-toc
 
 %% 2.7.3 Trajectory with Noise; KF Controller
 tic
@@ -668,19 +669,24 @@ x6_hat_c_plot = [x_hat_o(6,1);reshape(x_hat_p_c(6,1,:),[N 1])];
 x7_hat_c_plot = [x_hat_o(7,1);reshape(x_hat_p_c(7,1,:),[N 1])];
 x8_hat_c_plot = [x_hat_o(8,1);reshape(x_hat_p_c(8,1,:),[N 1])];
 
+toc
+%% Plotting 2.7.3
+
 figure()
 plot(t_noisy_r_flattened(1:N),x_noisy_r_flattened(1:N,8));
 hold on
 rho8_plot = reshape(rho(8,1,:),[N+1 1]);
 plot(time,x8_c_plot)
 hold on
-plot(time,rho8_plot)
-legend('reactive','KF','nominal')
-
+plot(time,rho8_plot, "LineWidth", 3, "Color", "#7E2F8E")
+xlabel('Days Elapsed')
+ylabel('ANC (Number of cells / L blood)')
+title("All Neutrophil Count (ANC) Comparison")
+legend('Reactive','Kalman Filter','Nominal')
 
 figure()
 hold on
-title("Noisy model KF controller control sequence")
+title("Noisy Model KF Controller Control Sequence")
 plot(time(1:N),u_c)
 xlabel("Time elapsed (days)")
 ylabel("Input dosage (mg)")
@@ -688,12 +694,139 @@ hold off
 
 figure()
 hold on
-title("Noisy model control sequence comparison")
-plot(t_noisy_r_flattened,u_noisy_r_flattened*1e9)
+title("Noisy Model Control Sequence Comparison")
+plot(t_noisy_r_flattened,u_noisy_r_flattened)
 plot(time(1:N),u_c)
 legend('reactive control sequence','KF control sequence')
 xlabel("Time elapsed (days)")
 ylabel("Input dosage (mg)")
 hold off
 
-toc
+%% 2.8.1 Control Input Smoothing - Cyclic Intervals
+
+N = length(u_c);
+u_smoothed_flattened = zeros(1, N);
+u_smoothed = [];
+t = time(1:N);
+
+i=1;
+start_i = 1;
+day = 14;
+t_i = t(i);
+sum = 0;
+n_points = 0;
+
+while i <= N
+    sum = sum + u_c(i);
+    if t(i) == day
+        u_i = sum/n_points;
+        u_smoothed_flattened(start_i:i) = u_i;
+        idx_7_days_later = find(t == day+6);
+        u_smoothed_flattened(i:idx_7_days_later) = 0;
+        u_smoothed = [u_smoothed u_i];
+
+        i = idx_7_days_later;
+        n_points = 0;
+        sum = 0;
+        start_i = i+1;
+        day = day + 20;
+        if day > N
+            day = N;
+        end
+    else
+        n_points = n_points + 1;
+    end
+    i = i + 1;
+end
+
+if n_points > 0
+    u_smoothed_flattened(start_i:i-1) = sum/n_points;
+    u_smoothed = [u_smoothed u_i];
+end
+
+figure()
+hold on
+plot(time(1:N),u_c);
+plot(t,u_smoothed_flattened);
+lgd = legend('KF control sequence', 'Smoothed KF control sequence');
+lgd.Location = "northoutside";
+xlabel("Time elapsed (days)");
+ylabel("Input dosage (mg)");
+title("Smoothed Control Sequence for Kalman Filter Controller")
+hold off
+
+figure()
+hold on
+plot(t_noisy_r_flattened,u_noisy_r_flattened, "LineWidth", 2)
+plot(t,u_smoothed_flattened, "LineWidth", 2)
+lgd = legend('Reactive control sequence', 'Smoothed KF control sequence');
+lgd.Location = "northoutside";
+xlabel("Time elapsed (days)");
+ylabel("Input dosage (mg)");
+title("Smoothed KF Control Sequence vs. Reactive Control Sequence")
+hold off
+
+clear t start_i i day idx_7_days_later sum u_i
+
+
+%% 2.8.2 Model's Response with Smoothed Inputs - Cyclic Intervals
+
+x_smoothed = [];
+t_smoothed = [];
+step_size_smoothed = 0.01; % very fine step size
+num_t_smoothed = (1/step_size_smoothed)*21+1; % number of timepoints to evaluate ODE45
+tspan = linspace(0,21,num_t_smoothed);
+
+x0_i = x0;
+    
+for i=1:num_cycles
+    [t_i,x_i] = ode45(@(t,x)jost(t,x,u_smoothed(i),theta),tspan,x0_i);
+    t_i = t_i + 21*(i-1); % shift the time index to the current cycle
+
+    x_smoothed = [x_smoothed x_i];
+    t_smoothed = [t_smoothed t_i];
+    x0_i = x_i(end,:);
+end
+
+clear i t_i x_i x0_i u_i tspan;
+
+% flatten to single nx8 matrix
+x_smoothed_flattened = [];
+t_smoothed_flattened = [];
+for i=1:num_cycles
+    x_smoothed_flattened = [x_smoothed_flattened; x_smoothed(:,8*(i-1)+1:8*i)];
+    t_smoothed_flattened = [t_smoothed_flattened; t_smoothed(:,i)];
+end
+clear i;
+
+%% 2.8.3 Plotting Response of Smoothed Inputs
+
+figure()
+hold on
+xlabel('Days Elapsed')
+ylabel('ANC (Number of cells / L blood)')
+title("All Neutrophil Count (ANC) x_8 vs Days Elapsed")
+% plot(time,rho8_plot*1e9, "LineWidth", 2)
+plot(time,x8_c_plot*1e9);
+% plot(t_noisy_r_flattened,x_noisy_r_flattened(:,8)*1e9)
+plot(t_smoothed_flattened,x_smoothed_flattened(:,8)*1e9, "LineWidth", 2)
+yline(1e9,'-b')
+yline(2e9,'-r')
+legend("Original", "Smoothed", "Desired lower bound","Desired upper bound","Location","southwest")
+hold off
+
+figure()
+hold on
+xlabel('Days Elapsed')
+ylabel('ANC (Number of cells / L blood)')
+title("All Neutrophil Count (ANC) x_8 vs Days Elapsed")
+plot(time,rho8_plot*1e9, "LineWidth", 2)
+% plot(t_noisy_r_flattened,x_noisy_r_flattened(:,8)*1e9)
+plot(t_smoothed_flattened,x_smoothed_flattened(:,8)*1e9, "LineWidth", 2)
+yline(1e9,'-b')
+yline(2e9,'-r')
+legend("Nominal", "Smoothed", "Desired lower bound","Desired upper bound","Location","southwest")
+hold off
+
+
+
