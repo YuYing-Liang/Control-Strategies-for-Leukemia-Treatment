@@ -84,9 +84,8 @@ for k=1:N
         0      x(1)  dt; 
         0      0     x(1);
     ];
-    f = @(x)calc_p_star(A_guess(x),b_c,C_c,x_calc,rho,mn,u_calc,k);
+    f = @(x)calc_p_star(A_guess(x),b_c,C_c,sp,rho,mn,u_calc,k);
     [p_star, fval] = fmincon(f,p_calc(:,:,k));
-%     disp(fval);
     
     % find input u that minimizes output error
     A_star = [
@@ -95,11 +94,10 @@ for k=1:N
         0           0           p_star(1);
     ];
 
-    g = @(u)calc_adaptive_control(A_star, b_c, C_c, rho, x_calc(:,:,k), u, 5, 0.0001, 1, 1, k);
-    [u_star, gval] = fmincon(g,u_calc(k));
-%     disp(u_star);
+    g = @(u)calc_adaptive_control(A_star, b_c, C_c, rho, x_calc(:,:,k), u, 10, 0.001, 5, 5, k);
+    [u_star, gval] = fmincon(g,repmat(u_calc(k), [5 1]));
     
-    u_calc(k+1) = u_star;
+    u_calc(k+1) = u_star(1);
     p_calc(:,:,k+1) = p_star;
     x_calc(:,:,k+1) = A_star*x_calc(:,:,k) + b_c*u_calc(k+1);
     y_calc(:,:,k+1) = C_c*x_calc(:,:,k+1);  
@@ -107,9 +105,6 @@ for k=1:N
     x_uc(:,:,k+1) = A_star*x_uc(:,:,k);
     y_uc(:,:,k+1) = C_c*x_uc(:,:,k+1);  
 end
-
-% disp(p_star);
-% disp(u_star);
 
 % 5. Plots
 
@@ -128,7 +123,7 @@ plot(time,rho1)
 title('Position over Time')
 xlabel('Time t_k')
 ylabel('Distance (m)')
-legend('MPC controlled','target') %,'adaptive uncontrolled')
+legend('Adaptive MPC controlled','target') %,'adaptive uncontrolled')
 hold off
 
 p1 = reshape(p_calc(1,1,:),[1 N+1]);
