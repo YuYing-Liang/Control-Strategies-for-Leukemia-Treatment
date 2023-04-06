@@ -1,10 +1,10 @@
-function [f] = jost(t,x,d,theta,num_days_for_cycle,on_drug_days)
+function [f] = jost_discrete(t,x,d,theta,num_days_for_cycle,on_drug_days, t_s)
 %JOST state ODE for 6-MP and 6-TGN leukopoiesis
 %   8 state model described in Jost et al. 2020
 %   d = dose
 %   theta = vector of parameters (2 by 1)
 
-if mod(t,num_days_for_cycle) <= on_drug_days
+if get_cycle_day(t, num_days_for_cycle) <= on_drug_days
     u = d;
 else
     u = 0;
@@ -40,5 +40,5 @@ f_hat = [0;...
 % disp(x)
 % disp(theta)
 f = A*x + B*u + f_hat;
-
+f = x + t_s * f;
 end
