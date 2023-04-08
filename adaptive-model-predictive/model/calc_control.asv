@@ -1,4 +1,4 @@
-function [f] = calc_control(p_star, rho, x_k, curr_k, u, q, r, Hp, Hu, n_cycle, n_drug, t_s)
+function [f] = calc_control(p_star, rho, x_k, curr_k, u, q, r, Hp, Hu, n_cycle, n_drug, var_w, var_v, t_s, type)
     % In this case, Hp is the number of days while Hu is the number of cycles
     f=0;
     n_steps_per_day = 1/t_s;
@@ -12,11 +12,14 @@ function [f] = calc_control(p_star, rho, x_k, curr_k, u, q, r, Hp, Hu, n_cycle, 
         for i=1:n_steps_per_day
             j = n_steps_per_day*(k-1) + i;
            
-            x_k = jost_discrete(j*t_s, x_k, u_applied, p_star, n_cycle, n_drug, t_s);
+            x_k = jost(j*t_s, x_k, u_applied, p_star, n_cycle, n_drug, var_w, t_s, type);
             z = g_nonlin(x_k);
             
-            if j <= length(rho) 
-                y_err = z - rho(j,:);
+            if j <= length(rho)
+                y_err = z - rho(j, :);
+                if type == "noisy-output"
+                    y_err = y_err - normrnd(0,var_v);
+                end
                 f = f + q*norm(y_err);
             end
         end

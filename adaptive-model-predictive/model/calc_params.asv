@@ -10,7 +10,7 @@ function [f] = calc_params(p_guess, p_actual, x_init, u, prev_step, n_cycle, n_d
 
     for i=1:prev_step
         x_k = jost_discrete((i+1)*t_s, x_k, u(k), p_guess, n_cycle, n_drug, t_s);
-        y_k = g_nonlin(x_k);
+        y_k = g_nonlin(x_k) + normrnd(0,0.01);
         
         x_k_obs = jost_discrete((i+1)*t_s, x_k_obs, u(k), p_actual, n_cycle, n_drug, t_s);
         y_k_obs = g_nonlin(x_k_obs);
