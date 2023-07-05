@@ -766,7 +766,7 @@ ylabel("Input dosage (mg)");
 title("Smoothed KF Control Sequence vs. Reactive Control Sequence")
 hold off
 
-clear t start_i i day idx_7_days_later sum u_i
+clear start_i i day idx_7_days_later sum u_i
 
 
 %% 2.8.2 Model's Response with Smoothed Inputs - Cyclic Intervals

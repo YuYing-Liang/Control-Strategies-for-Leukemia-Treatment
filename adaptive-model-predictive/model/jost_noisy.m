@@ -1,9 +1,10 @@
-function [f] = jost_noisy(t,x,d,theta,num_days_for_cycle,on_drug_days,var_w,t_s)
+function [f] = jost_noisy(t,x,d,theta,num_days_for_cycle,on_drug_days,t_s)
 %JOST state ODE for 6-MP and 6-TGN leukopoiesis with system noise
 %   8 state model described in Jost et al. 2020
 %   d = dose
 %   theta = vector of patient parameters (4 by 1)
-%   var_w = noise variance
+
+var_w = 0.025;
 
 if get_cycle_day(t, num_days_for_cycle) <= on_drug_days
     u = d;

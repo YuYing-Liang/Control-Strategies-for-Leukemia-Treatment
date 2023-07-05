@@ -4,6 +4,8 @@ function [f] = jost_discrete(t,x,d,theta,num_days_for_cycle,on_drug_days, t_s)
     %   d = dose
     %   theta = vector of patient parameters (4 by 1)
 
+%     var_w = 0.001;
+    
     if get_cycle_day(t, num_days_for_cycle) <= on_drug_days
         u = d;
     else
@@ -52,5 +54,5 @@ function [f] = jost_discrete(t,x,d,theta,num_days_for_cycle,on_drug_days, t_s)
     % disp(x)
     % disp(theta)
     f = A*x + B*u + f_hat;
-    f = x + t_s * f;
+    f = x + t_s * f; % + normrnd(0,var_w,[8,1]);
 end
