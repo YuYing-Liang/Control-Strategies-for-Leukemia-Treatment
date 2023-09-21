@@ -3,6 +3,11 @@ function [f] = calc_params(p_guess, p_actual, x_init, u, prev_step, n_cycle, n_d
     % x_k is the prediction: estimated parameters go in here
     % x_k_obs is the true system: true parameters that the controller doesn't know
     
+    % Notes:
+    % - pass in an array of measurements taken at the start of each cycle
+    % (same time as in the jost data)
+    % - keep track of the model output at the same time the measurement is
+    % taken
     f=0;
     x_k = x_init;
     x_k_obs = x_init;
