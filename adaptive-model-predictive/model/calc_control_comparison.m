@@ -53,7 +53,7 @@ function [f] = calc_control_comparison(p_star, rho, x_k, curr_k, curr_cycle, u, 
             
             if j <= length(rho) 
                 y_err = y - rho(j,:);
-                f = f + q*norm(y_err); % try using just y_err ^ 2
+                f = f + q*norm(y_err);
             end
         end
         
